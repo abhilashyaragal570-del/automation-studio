@@ -29,6 +29,11 @@
   <p class="muted" id="status">Loading status...</p>
 
   <div class="card">
+    <h3>Dashboard</h3>
+    <div id="dash" class="muted">Loading...</div>
+  </div>
+
+  <div class="card">
     <h3>Paste an email</h3>
     <textarea id="email" rows="9"></textarea>
     <p><button id="go" onclick="run()">Process email</button>
@@ -78,7 +83,7 @@
       if (rows.length === 0) { box.textContent = "No jobs yet."; return; }
       const table = el("table");
       const head = el("tr");
-      for (const h of ["Job", "Created", "Source", "Status", "Time", "Error"]) head.appendChild(el("th", h));
+      for (const h of ["Job", "Created", "Source", "Status", "Time", "Error", ""]) head.appendChild(el("th", h));
       table.appendChild(head);
       for (const r of rows) {
         const tr = el("tr");
@@ -90,6 +95,15 @@
         tr.appendChild(st);
         tr.appendChild(el("td", seconds(r.started_at, r.finished_at)));
         tr.appendChild(el("td", r.error || ""));
+        const act = el("td");
+        if (r.status === "failed") {
+          const b = el("button", "Retry");
+          b.style.padding = "4px 12px";
+          b.style.fontSize = "13px";
+          b.onclick = () => retryJob(r.id);
+          act.appendChild(b);
+        }
+        tr.appendChild(act);
         table.appendChild(tr);
       }
       box.appendChild(table);
@@ -119,7 +133,7 @@
     } catch (e) {}
   }
 
-    async function loadStats() {
+  async function loadStats() {
     try {
       const s = await (await fetch("/stats")).json();
       const box = document.getElementById("dash");
@@ -137,7 +151,21 @@
       box.appendChild(line("Jobs", s.jobs_by_status));
     } catch (e) {}
   }
-    function refreshAll() {
+
+  async function retryJob(id) {
+    try {
+      const r = await fetch("/jobs/" + id + "/retry", { method: "POST" });
+      if (!r.ok) {
+        const d = await r.json();
+        alert(d.detail || "Could not retry.");
+      }
+    } catch (e) {
+      alert("Could not retry.");
+    }
+    refreshAll();
+  }
+
+  function refreshAll() {
     loadStatus();
     loadJobs();
     loadHistory();
@@ -180,7 +208,3 @@
 </script>
 </body>
 </html>
-  <div class="card">
-    <h3>Dashboard</h3>
-    <div id="dash" class="muted">Loading...</div>
-  </div>

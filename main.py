@@ -128,3 +128,12 @@ def webhook_email(body: EmailIn, x_webhook_token: str = Header(default="")):
     job_id = db.create_job(text, "webhook")
     logging.getLogger("webhook").info("job %s queued", job_id)
     return {"job_id": job_id, "status": "queued"}
+
+@app.post("/jobs/{job_id}/retry", dependencies=[Depends(require_login)])
+def retry_job(job_id: int):
+    if db.queued_count() >= MAX_QUEUE:
+        raise HTTPException(status_code=429, detail="Queue is full. Try again later.")
+    if not db.retry_job(job_id):
+        raise HTTPException(status_code=409, detail="Only failed jobs can be retried.")
+    logging.getLogger("webhook").info("job %s re-queued", job_id)
+    return {"job_id": job_id, "status": "queued"}

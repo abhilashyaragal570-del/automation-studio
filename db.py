@@ -149,3 +149,10 @@ def stats():
         "jobs_by_status": [dict(r) for r in by_status],
         "avg_job_seconds": round(avg, 1) if avg is not None else None,
     }
+
+def retry_job(job_id):
+    with conn() as c:
+        cur = c.execute(
+            """UPDATE jobs SET status = 'queued', started_at = NULL, finished_at = NULL,
+               email_id = NULL, error = '' WHERE id = ? AND status = 'failed'""", (job_id,))
+        return cur.rowcount == 1
