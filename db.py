@@ -1,8 +1,9 @@
 import sqlite3
 import datetime
+import os
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "studio.db"
+DB_PATH = Path(os.getenv("DB_PATH", str(Path(__file__).parent / "studio.db")))
 
 
 def conn():
