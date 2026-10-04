@@ -2,6 +2,8 @@
 
 A small web app that reads incoming emails with Gemini. For each email it picks a category and urgency, pulls out the sender, topic and deadline, writes a short summary, and drafts a reply. Emails can be pasted into the web page or sent by another system through a webhook. Webhook emails go into a job queue and a background worker processes them one at a time.
 
+**Live demo:** https://automation-studio-w921.onrender.com (login required, runs in mock mode, may take about a minute to wake up)
+
 ## Features
 
 - Paste an email into the page and get the result straight away
