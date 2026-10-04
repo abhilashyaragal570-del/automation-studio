@@ -11,6 +11,7 @@ A small web app that reads incoming emails with Gemini. For each email it picks 
 - Jobs log, email history and a dashboard that refresh every 3 seconds
 - Daily Gemini request cap and a mock mode that uses no Gemini requests
 - Retry button for failed jobs
+- CSV export of the email history
 - Login for the page and its data
 
 ## Project files
@@ -56,3 +57,4 @@ python -c "import secrets; print(secrets.token_hex(16))"
 ```
 
 Optional: set `DB_PATH` to store the database file somewhere else, for example on a hosted disk. By default it is `studio.db` in the
+- `GET /export.csv` download the email history as a CSV file (needs the login)

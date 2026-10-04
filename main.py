@@ -1,3 +1,5 @@
+import csv
+import io
 import logging
 import os
 import secrets
@@ -5,7 +7,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 import db
@@ -137,3 +139,24 @@ def retry_job(job_id: int):
         raise HTTPException(status_code=409, detail="Only failed jobs can be retried.")
     logging.getLogger("webhook").info("job %s re-queued", job_id)
     return {"job_id": job_id, "status": "queued"}
+
+CSV_COLUMNS = ["id", "created_at", "category", "urgency", "sender_name", "topic",
+               "deadline", "summary", "reply", "mock"]
+
+
+def csv_safe(value):
+    text = "" if value is None else str(value)
+    if text[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + text
+    return text
+
+
+@app.get("/export.csv", dependencies=[Depends(require_login)])
+def export_csv():
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(CSV_COLUMNS)
+    for r in db.list_emails(limit=100000):
+        writer.writerow([csv_safe(r[c]) for c in CSV_COLUMNS])
+    return Response(content="\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": "attachment; filename=emails.csv"})
