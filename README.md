@@ -42,6 +42,8 @@ pip install -r requirements.txt
 ```
 MOCK_MODE=true
 WEBHOOK_TOKEN=any-long-random-text
+APP_USER=admin
+APP_PASSWORD=a-long-random-password
 GEMINI_API_KEY=your-gemini-api-key
 ```
 
@@ -60,6 +62,8 @@ uvicorn main:app --reload
 ```
 
 Open http://127.0.0.1:8000
+
+The page asks for the username and password from `.env`. The webhook does not use them. It uses only the `X-Webhook-Token` header.
 
 With `MOCK_MODE=true` no Gemini requests are made and the results are fake. Set `MOCK_MODE=false` and restart for real results.
 
