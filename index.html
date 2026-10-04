@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Automation Studio</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; background: #f4f6f8; color: #1f2937; margin: 0; padding: 24px; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit; font-size: 14px; }
+    button { background: #2563eb; color: #fff; border: 0; border-radius: 6px; padding: 10px 24px; font-size: 15px; cursor: pointer; }
+    button:disabled { background: #93c5fd; cursor: wait; }
+    .muted { color: #6b7280; font-size: 14px; }
+    .error { color: #b91c1c; font-weight: 600; }
+    .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; margin-right: 6px; background: #e0e7ff; color: #3730a3; }
+    .tag.high, .tag.failed { background: #fee2e2; color: #991b1b; }
+    .tag.medium, .tag.processing { background: #fef3c7; color: #92400e; }
+    .tag.low, .tag.done { background: #dcfce7; color: #166534; }
+    .tag.queued { background: #e5e7eb; color: #374151; }
+    pre { white-space: pre-wrap; background: #f9fafb; padding: 10px; border-radius: 6px; font-family: inherit; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AI Automation Studio</h1>
+  <p class="muted" id="status">Loading status...</p>
+
+  <div class="card">
+    <h3>Paste an email</h3>
+    <textarea id="email" rows="9"></textarea>
+    <p><button id="go" onclick="run()">Process email</button>
+       <button onclick="document.getElementById('email').value=''" style="background:#6b7280">Clear</button></p>
+    <div id="result"></div>
+  </div>
+
+  <div class="card">
+    <h3>Jobs (webhook queue)</h3>
+    <div id="jobs" class="muted">No jobs yet.</div>
+  </div>
+
+  <div class="card">
+    <h3>History</h3>
+    <div id="history" class="muted">No emails yet.</div>
+  </div>
+</div>
+
+<script>
+  function el(tag, text, cls) {
+    const e = document.createElement(tag);
+    if (text !== undefined) e.textContent = text;
+    if (cls) e.className = cls;
+    return e;
+  }
+
+  async function loadStatus() {
+    try {
+      const s = await (await fetch("/status")).json();
+      document.getElementById("status").textContent =
+        (s.mock ? "MOCK MODE (no Gemini requests). " : "Live Gemini mode. ") +
+        "Requests today: " + s.calls_today + " / " + s.cap + ". Queued jobs: " + s.queued;
+    } catch (e) {}
+  }
+
+  function seconds(a, b) {
+    if (!a || !b) return "";
+    const d = (new Date(b) - new Date(a)) / 1000;
+    return d + " s";
+  }
+
+  async function loadJobs() {
+    try {
+      const rows = await (await fetch("/jobs")).json();
+      const box = document.getElementById("jobs");
+      box.textContent = "";
+      if (rows.length === 0) { box.textContent = "No jobs yet."; return; }
+      const table = el("table");
+      const head = el("tr");
+      for (const h of ["Job", "Created", "Source", "Status", "Time", "Error"]) head.appendChild(el("th", h));
+      table.appendChild(head);
+      for (const r of rows) {
+        const tr = el("tr");
+        tr.appendChild(el("td", "#" + r.id));
+        tr.appendChild(el("td", r.created_at.replace("T", " ")));
+        tr.appendChild(el("td", r.source));
+        const st = el("td");
+        st.appendChild(el("span", r.status, "tag " + r.status));
+        tr.appendChild(st);
+        tr.appendChild(el("td", seconds(r.started_at, r.finished_at)));
+        tr.appendChild(el("td", r.error || ""));
+        table.appendChild(tr);
+      }
+      box.appendChild(table);
+    } catch (e) {}
+  }
+
+  async function loadHistory() {
+    try {
+      const rows = await (await fetch("/emails")).json();
+      const box = document.getElementById("history");
+      box.textContent = "";
+      if (rows.length === 0) { box.textContent = "No emails yet."; return; }
+      const table = el("table");
+      const head = el("tr");
+      for (const h of ["Time", "Category", "Urgency", "Topic", "Deadline"]) head.appendChild(el("th", h));
+      table.appendChild(head);
+      for (const r of rows) {
+        const tr = el("tr");
+        tr.appendChild(el("td", r.created_at.replace("T", " ")));
+        tr.appendChild(el("td", r.category + (r.mock ? " (mock)" : "")));
+        tr.appendChild(el("td", r.urgency));
+        tr.appendChild(el("td", r.topic));
+        tr.appendChild(el("td", r.deadline));
+        table.appendChild(tr);
+      }
+      box.appendChild(table);
+    } catch (e) {}
+  }
+
+    async function loadStats() {
+    try {
+      const s = await (await fetch("/stats")).json();
+      const box = document.getElementById("dash");
+      box.textContent = "";
+      const line = (title, items) => {
+        const p = el("p");
+        p.appendChild(el("b", title + ": "));
+        if (items.length === 0) p.appendChild(el("span", "none yet"));
+        for (const i of items) p.appendChild(el("span", i.name + " " + i.n, "tag " + i.name));
+        return p;
+      };
+      box.appendChild(el("p", "Emails processed: " + s.total_emails + "    Average job time: " + (s.avg_job_seconds === null ? "-" : s.avg_job_seconds + " s")));
+      box.appendChild(line("By category", s.by_category));
+      box.appendChild(line("By urgency", s.by_urgency));
+      box.appendChild(line("Jobs", s.jobs_by_status));
+    } catch (e) {}
+  }
+    function refreshAll() {
+    loadStatus();
+    loadJobs();
+    loadHistory();
+    loadStats();
+  }
+
+  async function run() {
+    const out = document.getElementById("result");
+    const btn = document.getElementById("go");
+    out.textContent = "Processing...";
+    btn.disabled = true;
+    try {
+      const r = await fetch("/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: document.getElementById("email").value })
+      });
+      const data = await r.json();
+      out.textContent = "";
+      if (!r.ok) { out.appendChild(el("div", data.detail || "Something went wrong.", "error")); return; }
+      const tags = el("p");
+      tags.appendChild(el("span", data.category, "tag"));
+      tags.appendChild(el("span", "urgency: " + data.urgency, "tag " + data.urgency));
+      out.appendChild(tags);
+      out.appendChild(el("p", "From: " + (data.sender_name || "-") + "   Topic: " + (data.topic || "-") + "   Deadline: " + (data.deadline || "-")));
+      out.appendChild(el("p", data.summary, "muted"));
+      out.appendChild(el("h4", "Draft reply"));
+      out.appendChild(el("pre", data.reply));
+    } catch (e) {
+      out.textContent = "";
+      out.appendChild(el("div", "Something went wrong. Try again.", "error"));
+    } finally {
+      btn.disabled = false;
+      refreshAll();
+    }
+  }
+
+  refreshAll();
+  setInterval(refreshAll, 3000);
+</script>
+</body>
+</html>
+  <div class="card">
+    <h3>Dashboard</h3>
+    <div id="dash" class="muted">Loading...</div>
+  </div>
