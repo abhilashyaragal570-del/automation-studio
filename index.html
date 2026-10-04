@@ -42,7 +42,7 @@
   </div>
 
   <div class="card">
-    <h3>Jobs (webhook queue)</h3>
+        <h3>Jobs (webhook queue) <a href="#" onclick="clearJobs(); return false;" style="font-size:13px;font-weight:normal;margin-left:12px">Clear finished</a></h3>
     <div id="jobs" class="muted">No jobs yet.</div>
   </div>
 
@@ -156,6 +156,19 @@
     } catch (e) {}
   }
 
+    async function clearJobs() {
+    if (!confirm("Remove all done and failed jobs from the Jobs log? Queued jobs and the email History are not touched.")) return;
+    try {
+      const r = await fetch("/jobs/clear", { method: "POST" });
+      if (!r.ok) {
+        const d = await r.json();
+        alert(d.detail || "Could not clear.");
+      }
+    } catch (e) {
+      alert("Could not clear.");
+    }
+    refreshAll();
+  }
   async function retryJob(id) {
     try {
       const r = await fetch("/jobs/" + id + "/retry", { method: "POST" });

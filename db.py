@@ -156,3 +156,8 @@ def retry_job(job_id):
             """UPDATE jobs SET status = 'queued', started_at = NULL, finished_at = NULL,
                email_id = NULL, error = '' WHERE id = ? AND status = 'failed'""", (job_id,))
         return cur.rowcount == 1
+
+def clear_finished_jobs():
+    with conn() as c:
+        cur = c.execute("DELETE FROM jobs WHERE status IN ('done', 'failed')")
+        return cur.rowcount    

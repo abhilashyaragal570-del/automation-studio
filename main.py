@@ -160,3 +160,9 @@ def export_csv():
         writer.writerow([csv_safe(r[c]) for c in CSV_COLUMNS])
     return Response(content="\ufeff" + out.getvalue(), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": "attachment; filename=emails.csv"})
+
+@app.post("/jobs/clear", dependencies=[Depends(require_login)])
+def clear_jobs():
+    removed = db.clear_finished_jobs()
+    logging.getLogger("webhook").info("cleared %s finished jobs", removed)
+    return {"removed": removed}
