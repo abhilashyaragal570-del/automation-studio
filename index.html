@@ -47,7 +47,8 @@
   </div>
 
   <div class="card">
-        <h3>History <a href="/export.csv" style="font-size:13px;font-weight:normal;margin-left:12px">Export CSV</a></h3>
+    <h3>History <a href="/export.csv" style="font-size:13px;font-weight:normal;margin-left:12px">Export CSV</a></h3>
+    <input id="search" type="text" placeholder="Search history..." oninput="loadHistory()" style="width:100%;box-sizing:border-box;padding:8px;margin:0 0 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
     <div id="history" class="muted">No emails yet.</div>
   </div>
 </div>
@@ -112,10 +113,13 @@
 
   async function loadHistory() {
     try {
-      const rows = await (await fetch("/emails")).json();
+      const allRows = await (await fetch("/emails")).json();
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      const rows = allRows.filter(r => !q ||
+        [r.category, r.urgency, r.topic, r.deadline, r.sender_name, r.summary].join(" ").toLowerCase().includes(q));
       const box = document.getElementById("history");
       box.textContent = "";
-      if (rows.length === 0) { box.textContent = "No emails yet."; return; }
+      if (rows.length === 0) { box.textContent = allRows.length === 0 ? "No emails yet." : "No matches."; return; }
       const table = el("table");
       const head = el("tr");
       for (const h of ["Time", "Category", "Urgency", "Topic", "Deadline"]) head.appendChild(el("th", h));

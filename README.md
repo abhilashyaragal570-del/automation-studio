@@ -12,6 +12,7 @@ A small web app that reads incoming emails with Gemini. For each email it picks 
 - Daily Gemini request cap and a mock mode that uses no Gemini requests
 - Retry button for failed jobs
 - CSV export of the email history
+- Search box on the email history
 - Login for the page and its data
 
 ## Project files
